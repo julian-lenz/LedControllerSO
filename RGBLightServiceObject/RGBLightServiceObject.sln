@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RGBLightServiceObject", "RGBLightServiceObject\RGBLightServiceObject.csproj", "{431304DD-4FD7-4F2D-9BAB-0EDB1C776614}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestRGBUPOS", "TestRGBUPOS\TestRGBUPOS.csproj", "{CDBB3831-A2D8-4E37-9D46-7849B8945D1C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{431304DD-4FD7-4F2D-9BAB-0EDB1C776614} = {431304DD-4FD7-4F2D-9BAB-0EDB1C776614}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{431304DD-4FD7-4F2D-9BAB-0EDB1C776614}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{431304DD-4FD7-4F2D-9BAB-0EDB1C776614}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{431304DD-4FD7-4F2D-9BAB-0EDB1C776614}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{431304DD-4FD7-4F2D-9BAB-0EDB1C776614}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDBB3831-A2D8-4E37-9D46-7849B8945D1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDBB3831-A2D8-4E37-9D46-7849B8945D1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDBB3831-A2D8-4E37-9D46-7849B8945D1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDBB3831-A2D8-4E37-9D46-7849B8945D1C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
