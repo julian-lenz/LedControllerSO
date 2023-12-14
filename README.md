@@ -1,1 +1,1 @@
-# LedController Service Object for Pos.Net
+# LedController Service Object for Microsoft.PointOfService
