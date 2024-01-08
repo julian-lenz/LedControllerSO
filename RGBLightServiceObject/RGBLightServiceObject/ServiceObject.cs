@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using LedSerialControl;
 using Microsoft.PointOfService;
 using Microsoft.PointOfService.BasicServiceObjects;
@@ -18,8 +19,7 @@ namespace PyramidServiceObject
     public class ServiceObject : LightsBasic
     {
         private RGBController _rgbController; // The RGB Controller object for communicating with the device
-
-
+        
         //"All properties are initialized by the open() method"
 
         public override int MaxLights { get; } = 1;
@@ -50,66 +50,28 @@ namespace PyramidServiceObject
                 throw new InvalidEnumArgumentException(nameof(alarms), (int)alarms, typeof(LightAlarms));
             if (!Enum.IsDefined(typeof(LightColors), colors))
                 throw new InvalidEnumArgumentException(nameof(colors), (int)colors, typeof(LightColors));
-            /*
-             * https://learn.microsoft.com/en-us/dotnet/api/microsoft.pointofservice.lightcolors?view=point-of-service-1.14
-             * LightColors consists of
-             * Custom1	65536	Supports first custom color (usually red).
-             * Custom2	131072	Supports second custom color (usually yellow).
-             * Custom3	262144	Supports third custom color.
-             * Custom4	524288	Supports fourth custom color.
-             * Custom5  1048576	Supports fifth custom color.
-             * Primary	1       Supports primary color (usually green).
-             */
-            /*
-             * https://learn.microsoft.com/en-us/dotnet/api/microsoft.pointofservice.lightalarms?view=point-of-service-1.14
-             * LightAlarms Enum consist of
-             * Custom 1 = 65536
-             * Custom 2 = 131072
-             * Fast = 64
-             * Medium = 32
-             * None = 1
-             * Slow = 16
-             * 
-             */
-            switch (colors)
-            {
-                case LightColors.Primary:
-                    _rgbController.SetColor(RGBController.ColorNames.Green);
-                    break;
-                case LightColors.Custom1:
-                    _rgbController.SetColor(RGBController.ColorNames.Red);
-                    break;
-                case LightColors.Custom2:
-                    _rgbController.SetColor(RGBController.ColorNames.Yellow);
-                    break;
-                case LightColors.Custom3:
-                    _rgbController.SetColor(RGBController.ColorNames.Orange);
-                    break;
-                case LightColors.Custom4:
-                    _rgbController.SetColor(RGBController.ColorNames.Blue);
-                    break;
-                case LightColors.Custom5:
-                    _rgbController.SetColor(RGBController.ColorNames.Magenta);
-                    break;
-            }
+            
+            cts.Cancel(); // Cancel the Blinking Thread if it is running
+            _rgbController.SetColor(
+                colors switch
+                {
+                    LightColors.Primary => RGBController.ColorNames.Green,
+                    LightColors.Custom1 => RGBController.ColorNames.Red,
+                    LightColors.Custom2 => RGBController.ColorNames.Yellow,
+                    LightColors.Custom3 => RGBController.ColorNames.Orange,
+                    LightColors.Custom4 => RGBController.ColorNames.Blue,
+                    LightColors.Custom5 => RGBController.ColorNames.Magenta,
+                    _ => RGBController.ColorNames.Off
+                }
+                );
 
-            if (blinkOnCycle != 0)
+            if (blinkOnCycle != 0 && blinkOffCycle != 0)
             {
-                // Convert from ms to appropriate value between 0 and 255
-                var steps = (blinkOnCycle / 27);
-                if (steps > 255)
-                    steps = 255;
-                byte periodByte = (byte)steps;
-                _rgbController.SetFlashingPeriod(periodByte);
-                _rgbController.SetFlashing(true);
+                cts = new CancellationTokenSource();
+                Thread blinkThread = new Thread(() => BlinkThread(blinkOnCycle, blinkOffCycle, cts.Token));
+                blinkThread.Start();
             }
-            else
-                _rgbController.SetFlashing(false);
-            
-            
         }
-        
-        
 
         public ServiceObject()
         {
@@ -155,5 +117,28 @@ namespace PyramidServiceObject
         }
         private string _healthText = "";
         public override string CheckHealthText => _healthText;
+        
+        static CancellationTokenSource cts = new CancellationTokenSource();
+        
+        /// <summary>
+        /// This method is responsible for creating a blinking effect on the RGB light.
+        /// </summary>
+        /// <param name="onTime">The amount of time (in milliseconds) the light stays on during each blink cycle.</param>
+        /// <param name="offTime">The amount of time (in milliseconds) the light stays off during each blink cycle.</param>
+        /// <param name="token">A cancellation token that can be used to cancel the blinking effect.</param>
+        void BlinkThread(int onTime, int offTime, CancellationToken token)
+        {
+            _rgbController.SaveColor();
+            while (true)
+            {
+                if(token.IsCancellationRequested)
+                    break;
+                _rgbController.ResumeColor();
+                Thread.Sleep(onTime);
+                _rgbController.SetColor(RGBController.ColorNames.Off);
+                Thread.Sleep(offTime);
+            }
+        }
+
     }
 }
