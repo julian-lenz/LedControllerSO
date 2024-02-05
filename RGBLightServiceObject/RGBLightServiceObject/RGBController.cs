@@ -1,7 +1,6 @@
 /// This Class is used to control the RGB Light Controller from Pyramid Computers.
 /// Author: Julian Lenzenweger
 /// Date: 07.12.2023
-///
 
 using System;
 using System.Collections.Generic;
@@ -34,7 +33,7 @@ public class RGBController
     /// </summary>
     private static readonly Dictionary<ColorNames, byte[]> ColorDictionaryRgbw = new Dictionary<ColorNames, byte[]>
     {
-        { ColorNames.Red, new byte[] { 255, 0, 0, 0 } } ,
+        { ColorNames.Red, new byte[] { 255, 0, 0, 0 } },
         { ColorNames.Green, new byte[] { 0, 255, 0, 0 } },
         { ColorNames.Blue, new byte[] { 0, 0, 255, 0 } },
         { ColorNames.White, new byte[] { 0, 0, 0, 255 } },
@@ -44,7 +43,7 @@ public class RGBController
         { ColorNames.Magenta, new byte[] { 255, 0, 255, 0 } },
         { ColorNames.Off, new byte[] { 0, 0, 0, 0 } }
     };
-    
+
     /// <summary>
     /// Struct representing a RGBW Value
     /// </summary>
@@ -75,7 +74,7 @@ public class RGBController
             return new RgbwValue(values[0], values[1], values[2], values[3]);
         }
     }
-    
+
     private enum Command
     {
         SetColor = 0xCA,
@@ -86,26 +85,24 @@ public class RGBController
         ReadID = 0xBE
     }
 
-    
+
     private static int _baudrate { get; set; }
     private const int _databits = 8;
     private SerialPort _serialPort;
-    
+
     private byte[] _startbits = { 0x5A, 0xFF };
     private byte[] _endbits = { 0xA5 };
-    
+
 
     private const byte _off = 0;
     private const byte _on = 1;
-    
+
     // Properties for the current color and flashing state
     private RgbwValue _lastColor = new RgbwValue(0, 0, 0, 0);
     private RgbwValue _savedColor = new RgbwValue(0, 0, 0, 0);
     public bool Flashing { get; private set; } = false;
-    
 
-    
-    
+
     /// <summary>
     /// Sets the color of the RGB LED strip.
     /// </summary>
@@ -117,22 +114,22 @@ public class RGBController
         SendCommand(Command.SetColor, argument);
         _lastColor = values;
     }
-    
+
     /// <summary>
     /// Sets the color of the RGB controller in RGBW Values
     /// </summary>
-    public void SetColorRgbw( byte r = 0, byte g = 0, byte b = 0, byte w = 0)
+    public void SetColorRgbw(byte r = 0, byte g = 0, byte b = 0, byte w = 0)
     {
         byte[] values = { r, g, b, w, 0, 0, 0, 0 };
         SendCommand(Command.SetColor, values);
         _lastColor = values;
     }
-    
+
     private void SetColorRgbw(RgbwValue color)
     {
         SetColorRgbw(color.Red, color.Green, color.Blue, color.White);
     }
-    
+
     /// <summary>
     /// Sets the color of the RGBW Module in Percent
     /// </summary>
@@ -140,17 +137,17 @@ public class RGBController
     /// <param name="g">Value of Green </param>
     /// <param name="b">Value of Blue</param>
     /// <param name="w">Value of White</param>
-    public void SetColorRgbwPercent( short r = 0, short g = 0, short b = 0, short w = 0)
+    public void SetColorRgbwPercent(short r = 0, short g = 0, short b = 0, short w = 0)
     {
         if (r > 100 || g > 100 || b > 100 || w > 100 || r < 0 || g < 0 || b < 0 || w < 0)
             throw new ArgumentException("Values must be between 0 and 100");
-        byte red = (byte)(r*255/100);
-        byte green =  (byte)(g*255/100);
-        byte blue =  (byte)(b*255/100);
-        byte white =  (byte)(w*255/100);
+        byte red = (byte)(r * 255 / 100);
+        byte green = (byte)(g * 255 / 100);
+        byte blue = (byte)(b * 255 / 100);
+        byte white = (byte)(w * 255 / 100);
         SetColorRgbw(red, green, blue, white);
     }
-    
+
     /// <summary>
     ///  Saves the current color of the controller internally, to resume to it later with ResumeColor()
     /// </summary>
@@ -158,6 +155,7 @@ public class RGBController
     {
         _savedColor = _lastColor;
     }
+
     /// <summary>
     /// Sets the static color of the Module to the last saved color. Saved via SaveColor()
     /// </summary>
@@ -165,7 +163,7 @@ public class RGBController
     {
         SetColorRgbw(_savedColor);
     }
-    
+
     /// <summary>
     /// Sets the flashing mode of the RGB LED strip.
     /// </summary>
@@ -188,7 +186,7 @@ public class RGBController
     {
         SendCommand(Command.FlashingPeriod, period);
     }
-    
+
     public void SetFlashingColors(ColorNames color1, ColorNames color2)
     {
         byte[] values = ConcatArrays(ColorDictionaryRgbw[color1], ColorDictionaryRgbw[color2]);
@@ -200,7 +198,7 @@ public class RGBController
     {
         SendCommand(Command.ReadID, id);
     }
-    
+
     public int ReadID()
     {
         byte[] message = ConcatArrays(_startbits, new byte[] { (byte)Command.ReadID }, _endbits);
@@ -217,8 +215,8 @@ public class RGBController
             throw;
         }
     }
-    
-    
+
+
     /// <summary>
     /// Constructor for RGBController
     /// </summary>
@@ -263,19 +261,20 @@ public class RGBController
                 case InvalidOperationException _:
                     throw new InvalidOperationException("Serial Port is not open");
             }
+
             Console.WriteLine(e);
             throw;
         }
-        
     }
+
     private void SendCommand(Command command, byte argument)
     {
         SendCommand(command, new byte[] { argument });
     }
-    
-    
+
+
     // Helper Functions for byte array handling
-    
+
     /// <summary>
     /// Help function to concat multiple byte arrays
     /// </summary>
@@ -285,7 +284,7 @@ public class RGBController
     {
         return arrays.SelectMany(arr => arr).ToArray();
     }
-    
+
     /// <summary>
     /// Help function to convert a byte array to a hex string
     /// </summary>
@@ -295,7 +294,7 @@ public class RGBController
     {
         return BitConverter.ToString(bytes).Replace("-", "");
     }
-    
+
     /// <summary>
     /// Converts a Hex String to Array of Bytes
     /// </summary>
@@ -309,7 +308,7 @@ public class RGBController
         {
             bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
         }
+
         return bytes;
     }
 }
-
