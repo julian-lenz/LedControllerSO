@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using LedSerialControl;
 using Microsoft.PointOfService;
 using Microsoft.PointOfService.BasicServiceObjects;
 using System.Threading;
+using Microsoft.Win32;
 
-namespace PyramidServiceObject
+namespace RGBLightServiceObject
 {
     [HardwareId("USB\\VID_03EB&PID_2404&REV_0100")]
     [ServiceObject(
@@ -18,17 +21,17 @@ namespace PyramidServiceObject
     public class ServiceObject : LightsBasic
     {
         private RGBController _rgbController; // The RGB Controller object for communicating with the device
-
-        //"All properties are initialized by the open() method"
-
         public override int MaxLights { get; } = 1;
-
         public override LightColors CapColor { get; } = LightColors.Primary | LightColors.Custom1 |
                                                         LightColors.Custom2 | LightColors.Custom3 |
                                                         LightColors.Custom4 | LightColors.Custom5;
-
         public override LightAlarms CapAlarm { get; } = LightAlarms.None;
         public override bool CapBlink { get; } = true; // Blinking is supported
+        private string _healthText = "";
+        public override string CheckHealthText => _healthText;
+
+        static CancellationTokenSource _cts = new CancellationTokenSource();
+        
 
         public override void SwitchOff(int lightnumber)
         {
@@ -53,7 +56,7 @@ namespace PyramidServiceObject
             if (!Enum.IsDefined(typeof(LightColors), colors))
                 throw new InvalidEnumArgumentException(nameof(colors), (int)colors, typeof(LightColors));
 
-            cts.Cancel(); // Cancel the Blinking Thread if it is running
+            _cts.Cancel(); // Cancel the Blinking Thread if it is running
             _rgbController.SetColor(
                 colors switch
                 {
@@ -69,15 +72,22 @@ namespace PyramidServiceObject
 
             if (blinkOnCycle != 0 && blinkOffCycle != 0)
             {
-                cts = new CancellationTokenSource();
-                Thread blinkThread = new Thread(() => BlinkThread(blinkOnCycle, blinkOffCycle, cts.Token));
+                _cts = new CancellationTokenSource();
+                Thread blinkThread = new Thread(() => BlinkThread(blinkOnCycle, blinkOffCycle, _cts.Token));
                 blinkThread.Start();
             }
         }
 
-        public ServiceObject()
+        public override void Claim(int timeout)
         {
-            _rgbController = new RGBController("COM4");
+            _rgbController = new RGBController(GetPort());
+            base.Claim(timeout);
+        }
+        
+        public override void Release()
+        {
+            _rgbController = null;
+            base.Release();
         }
 
         public override string CheckHealth(HealthCheckLevel level)
@@ -112,7 +122,6 @@ namespace PyramidServiceObject
                     _healthText = "External HCheck: Complete";
                     break;
             }
-
             return "OK";
         }
 
@@ -121,10 +130,6 @@ namespace PyramidServiceObject
             throw new NotImplementedException();
         }
 
-        private string _healthText = "";
-        public override string CheckHealthText => _healthText;
-
-        static CancellationTokenSource cts = new CancellationTokenSource();
 
         /// <summary>
         /// This method is responsible for creating a blinking effect on the RGB light.
@@ -132,7 +137,7 @@ namespace PyramidServiceObject
         /// <param name="onTime">The amount of time (in milliseconds) the light stays on during each blink cycle.</param>
         /// <param name="offTime">The amount of time (in milliseconds) the light stays off during each blink cycle.</param>
         /// <param name="token">A cancellation token that can be used to cancel the blinking effect.</param>
-        void BlinkThread(int onTime, int offTime, CancellationToken token)
+        private void BlinkThread(int onTime, int offTime, CancellationToken token)
         {
             _rgbController.SaveColor();
             while (true)
@@ -145,5 +150,39 @@ namespace PyramidServiceObject
                 Thread.Sleep(offTime);
             }
         }
+        
+        /// <summary>
+        /// Get the COM port name associated with the hardware id of the RGB Controller
+        /// </summary>
+        /// <returns>array</returns>
+        private static string GetPort()
+        {
+            String VID = "VID_03EB" ;
+            String PID = "PID_2404";
+            String pattern = String.Format("^VID_{0}.PID_{1}", VID, PID);
+            Regex _rx = new Regex(pattern, RegexOptions.IgnoreCase);
+            List<string> comports = new List<string>();
+            RegistryKey rk1 = Registry.LocalMachine;
+            RegistryKey rk2 = rk1.OpenSubKey("SYSTEM\\CurrentControlSet\\Enum");
+            foreach (String s3 in rk2.GetSubKeyNames())
+            {
+                RegistryKey rk3 = rk2.OpenSubKey(s3);
+                foreach (String s in rk3.GetSubKeyNames())
+                {
+                    if (_rx.Match(s).Success)
+                    {
+                        RegistryKey rk4 = rk3.OpenSubKey(s);
+                        foreach (String s2 in rk4.GetSubKeyNames())
+                        {
+                            RegistryKey rk5 = rk4.OpenSubKey(s2);
+                            RegistryKey rk6 = rk5.OpenSubKey("Device Parameters");
+                            comports.Add((string)rk6.GetValue("PortName"));
+                        }
+                    }
+                }
+            }
+            return comports[0];
+        }
+        
     }
 }
